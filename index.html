@@ -1,0 +1,195 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Consumo de Energia</title>
+    <base href="./public/">
+    <link rel="stylesheet" href="styles.css">
+  </head>
+  <body>
+    <div class="app-shell">
+      <header class="topbar">
+        <div>
+          <p class="eyebrow">Controle operacional</p>
+          <h1>Consumo de energia</h1>
+        </div>
+        <div class="top-actions">
+          <span class="status-pill" id="storageStatus">Carregando</span>
+          <button class="button ghost" id="resetDataButton" type="button">Restaurar planilha</button>
+          <button class="button ghost" id="importButton" type="button">Importar</button>
+          <button class="button ghost" id="exportJsonButton" type="button">JSON</button>
+          <button class="button primary" id="exportCsvButton" type="button">CSV</button>
+          <input id="importFileInput" type="file" accept="application/json" hidden>
+        </div>
+      </header>
+
+      <main class="workspace">
+        <aside class="panel form-panel" aria-label="Cadastro de aparelho">
+          <form id="deviceForm" autocomplete="off">
+            <div class="panel-header">
+              <h2 id="formTitle">Novo aparelho</h2>
+              <button class="icon-button" id="newRecordButton" type="button" aria-label="Novo registro" title="Novo registro">+</button>
+            </div>
+
+            <label class="field full">
+              <span>Aparelho</span>
+              <input id="deviceName" name="deviceName" required maxlength="80">
+            </label>
+
+            <div class="field-grid">
+              <label class="field">
+                <span>Tempo medido</span>
+                <input id="measuredTime" name="measuredTime" placeholder="1h40, 15 dias">
+              </label>
+              <label class="field">
+                <span>kWh medido</span>
+                <input id="measuredKwh" name="measuredKwh" inputmode="decimal" required placeholder="0,208">
+              </label>
+            </div>
+
+            <label class="field full">
+              <span>Modo de calculo</span>
+              <select id="mode" name="mode">
+                <option value="alwaysOn">24h ligado</option>
+                <option value="hoursPerDay">Horas por dia</option>
+                <option value="perHour">Por hora</option>
+                <option value="perUse">Por uso</option>
+                <option value="period">Periodo medido</option>
+              </select>
+            </label>
+
+            <div class="field-grid">
+              <label class="field">
+                <span>Horas por dia</span>
+                <input id="hoursPerDay" name="hoursPerDay" inputmode="decimal" placeholder="6">
+              </label>
+              <label class="field">
+                <span>Dias no mes</span>
+                <input id="daysPerMonth" name="daysPerMonth" inputmode="decimal" placeholder="24">
+              </label>
+              <label class="field">
+                <span>Usos no mes</span>
+                <input id="usesPerMonth" name="usesPerMonth" inputmode="decimal" placeholder="1">
+              </label>
+              <label class="field">
+                <span>Tarifa R$/kWh</span>
+                <input id="tariff" name="tariff" inputmode="decimal" placeholder="0,83">
+              </label>
+            </div>
+
+            <label class="field full">
+              <span>Observacao</span>
+              <input id="notes" name="notes" maxlength="120">
+            </label>
+
+            <div class="calculation-preview" id="calculationPreview" aria-live="polite">
+              <div>
+                <span>Custo mensal</span>
+                <strong>R$ 0,00</strong>
+              </div>
+              <div>
+                <span>kWh mensal</span>
+                <strong>0,00</strong>
+              </div>
+            </div>
+
+            <div class="form-actions">
+              <button class="button primary" type="submit">Salvar</button>
+              <button class="button danger" id="deleteButton" type="button" hidden>Excluir</button>
+            </div>
+          </form>
+        </aside>
+
+        <section class="content-area">
+          <section class="settings-strip" aria-label="Parametros gerais">
+            <label class="compact-field">
+              <span>Tarifa padrao</span>
+              <input id="defaultTariff" inputmode="decimal">
+            </label>
+            <label class="compact-field">
+              <span>Dias padrao</span>
+              <input id="defaultDays" inputmode="decimal">
+            </label>
+            <label class="compact-field grow">
+              <span>Busca</span>
+              <input id="searchInput" placeholder="Aparelho ou observacao">
+            </label>
+            <label class="compact-field">
+              <span>Modo</span>
+              <select id="modeFilter">
+                <option value="all">Todos</option>
+                <option value="alwaysOn">24h ligado</option>
+                <option value="hoursPerDay">Horas por dia</option>
+                <option value="perHour">Por hora</option>
+                <option value="perUse">Por uso</option>
+                <option value="period">Periodo medido</option>
+              </select>
+            </label>
+          </section>
+
+          <section class="metrics-grid" aria-label="Resumo">
+            <article class="metric">
+              <span>Custo mensal</span>
+              <strong id="totalCost">R$ 0,00</strong>
+            </article>
+            <article class="metric">
+              <span>Consumo mensal</span>
+              <strong id="totalKwh">0,00 kWh</strong>
+            </article>
+            <article class="metric">
+              <span>Maior gasto</span>
+              <strong id="topConsumer">-</strong>
+            </article>
+            <article class="metric warning">
+              <span>Pendencias</span>
+              <strong id="pendingCount">0</strong>
+            </article>
+          </section>
+
+          <section class="analysis-grid">
+            <div class="panel chart-panel">
+              <div class="panel-header">
+                <h2>Ranking mensal</h2>
+                <span id="recordCount" class="count-pill">0 itens</span>
+              </div>
+              <canvas id="costChart" width="900" height="320" aria-label="Grafico de custo mensal"></canvas>
+            </div>
+
+            <div class="panel insight-panel">
+              <div class="panel-header">
+                <h2>Conferencia</h2>
+              </div>
+              <div id="insightList" class="insight-list"></div>
+            </div>
+          </section>
+
+          <section class="panel table-panel" aria-label="Tabela de aparelhos">
+            <div class="table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Aparelho</th>
+                    <th>Modo</th>
+                    <th>Medicao</th>
+                    <th>kWh/mes</th>
+                    <th>Custo/mes</th>
+                    <th>Planilha</th>
+                    <th>Acoes</th>
+                  </tr>
+                </thead>
+                <tbody id="recordsTable"></tbody>
+              </table>
+            </div>
+          </section>
+        </section>
+      </main>
+    </div>
+
+    <script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore-compat.js"></script>
+    <script src="firebase-config.js"></script>
+    <script src="app.js"></script>
+  </body>
+</html>

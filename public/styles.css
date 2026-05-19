@@ -146,11 +146,64 @@ h2 {
   background: var(--red);
 }
 
+.button:disabled {
+  cursor: wait;
+  opacity: 0.68;
+}
+
 .icon-button {
   width: 40px;
   padding: 0;
   font-size: 1.35rem;
   line-height: 1;
+}
+
+.auth-bar {
+  display: flex;
+  align-items: end;
+  gap: 12px;
+  margin-bottom: 18px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 12px;
+  background: var(--surface);
+  box-shadow: var(--shadow);
+}
+
+.auth-form {
+  display: grid;
+  flex: 1;
+  grid-template-columns: minmax(220px, 1fr) minmax(180px, 0.75fr) auto;
+  gap: 12px;
+  align-items: end;
+}
+
+.auth-form .button {
+  min-height: 42px;
+}
+
+.auth-session {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-left: auto;
+}
+
+.auth-session span {
+  color: var(--muted);
+  font-size: 0.9rem;
+  font-weight: 800;
+}
+
+.auth-message {
+  min-height: 20px;
+  color: var(--muted);
+  font-size: 0.86rem;
+  font-weight: 800;
+}
+
+.auth-message.error {
+  color: var(--red);
 }
 
 .workspace {
@@ -498,6 +551,20 @@ tbody tr:hover {
 
   .top-actions .button {
     flex: 1 1 120px;
+  }
+
+  .auth-bar {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .auth-form {
+    grid-template-columns: 1fr;
+  }
+
+  .auth-session {
+    justify-content: space-between;
+    margin-left: 0;
   }
 
   .settings-strip,

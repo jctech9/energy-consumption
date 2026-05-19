@@ -23,6 +23,25 @@
         </div>
       </header>
 
+      <section class="auth-bar" id="authBar" aria-label="Login Firebase">
+        <form class="auth-form" id="authForm" autocomplete="on">
+          <label class="compact-field">
+            <span>Email</span>
+            <input id="authEmail" name="email" type="email" autocomplete="email" required>
+          </label>
+          <label class="compact-field">
+            <span>Senha</span>
+            <input id="authPassword" name="password" type="password" autocomplete="current-password" required>
+          </label>
+          <button class="button primary" id="loginButton" type="submit">Entrar</button>
+        </form>
+        <div class="auth-session" id="authSession" hidden>
+          <span id="authUser"></span>
+          <button class="button ghost" id="logoutButton" type="button">Sair</button>
+        </div>
+        <span class="auth-message" id="authMessage" role="status"></span>
+      </section>
+
       <main class="workspace">
         <aside class="panel form-panel" aria-label="Cadastro de aparelho">
           <form id="deviceForm" autocomplete="off">

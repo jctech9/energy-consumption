@@ -190,8 +190,10 @@
   const state = {
     records: loadRecords(),
     settings: loadSettings(),
+    remoteStore: null,
     remoteDoc: null,
     remoteUnsubscribe: null,
+    currentUser: null,
     selectedId: null,
     filters: {
       search: "",
@@ -227,6 +229,15 @@
     insightList: document.getElementById("insightList"),
     chart: document.getElementById("costChart"),
     storageStatus: document.getElementById("storageStatus"),
+    authBar: document.getElementById("authBar"),
+    authForm: document.getElementById("authForm"),
+    authEmail: document.getElementById("authEmail"),
+    authPassword: document.getElementById("authPassword"),
+    loginButton: document.getElementById("loginButton"),
+    authSession: document.getElementById("authSession"),
+    authUser: document.getElementById("authUser"),
+    logoutButton: document.getElementById("logoutButton"),
+    authMessage: document.getElementById("authMessage"),
     resetDataButton: document.getElementById("resetDataButton"),
     exportCsvButton: document.getElementById("exportCsvButton"),
     exportJsonButton: document.getElementById("exportJsonButton"),
@@ -244,43 +255,38 @@
     bootDataStore();
   }
 
-  async function bootDataStore() {
+  function bootDataStore() {
     const remote = createRemoteStore();
     if (!remote) {
       updateStorageStatus("Modo local", "warning");
+      updateAuthMessage("Firebase indisponivel.", "error");
       return;
     }
 
-    updateStorageStatus("Conectando", "warning");
-    try {
-      if (remote.auth) {
-        await remote.auth.signInAnonymously();
-      }
+    state.remoteStore = remote;
+    updateAuthUi();
 
-      state.remoteDoc = remote.docRef;
-      const snapshot = await state.remoteDoc.get();
-      if (snapshot.exists) {
-        applyRemoteData(snapshot.data());
-      } else {
-        await writeRemoteData();
-      }
-
-      state.remoteUnsubscribe = state.remoteDoc.onSnapshot(function (nextSnapshot) {
-        if (nextSnapshot.exists) {
-          applyRemoteData(nextSnapshot.data());
-        }
-        updateStorageStatus("Firebase", "");
-      }, function (error) {
-        console.error("Firestore listener failed", error);
-        updateStorageStatus("Firebase erro", "error");
-      });
-
-      updateStorageStatus("Firebase", "");
-    } catch (error) {
-      console.error("Firebase connection failed", error);
-      state.remoteDoc = null;
-      updateStorageStatus("Modo local", "error");
+    if (!remote.auth || !remote.auth.onAuthStateChanged || !remote.auth.signInWithEmailAndPassword) {
+      updateStorageStatus("Auth indisponivel", "error");
+      updateAuthMessage("Autenticacao por email indisponivel.", "error");
+      return;
     }
+
+    updateStorageStatus("Login pendente", "warning");
+    remote.auth.onAuthStateChanged(function (user) {
+      state.currentUser = user || null;
+      updateAuthUi();
+      if (state.currentUser) {
+        connectRemoteData();
+        return;
+      }
+      disconnectRemoteData();
+      updateStorageStatus("Login pendente", "warning");
+    }, function (error) {
+      console.error("Firebase auth failed", error);
+      updateStorageStatus("Modo local", "error");
+      updateAuthMessage("Falha na autenticacao.", "error");
+    });
   }
 
   function createRemoteStore() {
@@ -306,6 +312,50 @@
       auth: auth,
       docRef: firestore.collection(FIRESTORE_COLLECTION).doc(FIRESTORE_DOC_ID)
     };
+  }
+
+  async function connectRemoteData() {
+    const remote = state.remoteStore;
+    if (!remote || !state.currentUser) {
+      return;
+    }
+
+    disconnectRemoteData();
+    state.remoteDoc = remote.docRef;
+    updateStorageStatus("Conectando", "warning");
+
+    try {
+      const snapshot = await state.remoteDoc.get();
+      if (snapshot.exists) {
+        applyRemoteData(snapshot.data());
+      } else {
+        await writeRemoteData();
+      }
+
+      state.remoteUnsubscribe = state.remoteDoc.onSnapshot(function (nextSnapshot) {
+        if (nextSnapshot.exists) {
+          applyRemoteData(nextSnapshot.data());
+        }
+        updateStorageStatus("Firebase", "");
+      }, function (error) {
+        console.error("Firestore listener failed", error);
+        updateStorageStatus("Firebase erro", "error");
+      });
+
+      updateStorageStatus("Firebase", "");
+    } catch (error) {
+      console.error("Firebase connection failed", error);
+      disconnectRemoteData();
+      updateStorageStatus("Firebase erro", "error");
+    }
+  }
+
+  function disconnectRemoteData() {
+    if (state.remoteUnsubscribe) {
+      state.remoteUnsubscribe();
+      state.remoteUnsubscribe = null;
+    }
+    state.remoteDoc = null;
   }
 
   function applyRemoteData(data) {
@@ -334,6 +384,13 @@
   }
 
   function bindEvents() {
+    if (els.authForm) {
+      els.authForm.addEventListener("submit", handleLogin);
+    }
+    if (els.logoutButton) {
+      els.logoutButton.addEventListener("click", handleLogout);
+    }
+
     els.form.addEventListener("submit", handleSubmit);
     els.newRecordButton.addEventListener("click", resetForm);
     els.deleteButton.addEventListener("click", deleteSelected);
@@ -381,6 +438,89 @@
     } else {
       window.addEventListener("resize", drawChart);
     }
+  }
+
+  function handleLogin(event) {
+    event.preventDefault();
+    const remote = state.remoteStore;
+    if (!remote || !remote.auth) {
+      updateAuthMessage("Firebase indisponivel.", "error");
+      return;
+    }
+
+    const email = els.authEmail.value.trim();
+    const password = els.authPassword.value;
+    if (!email || !password) {
+      return;
+    }
+
+    updateAuthMessage("Entrando...", "");
+    updateStorageStatus("Conectando", "warning");
+    els.loginButton.disabled = true;
+    remote.auth.signInWithEmailAndPassword(email, password)
+      .then(function () {
+        els.authPassword.value = "";
+        updateAuthMessage("", "");
+      })
+      .catch(function (error) {
+        console.error("Firebase login failed", error);
+        updateStorageStatus("Login falhou", "error");
+        updateAuthMessage(authErrorMessage(error), "error");
+      })
+      .finally(function () {
+        els.loginButton.disabled = false;
+      });
+  }
+
+  function handleLogout() {
+    const remote = state.remoteStore;
+    if (!remote || !remote.auth) {
+      return;
+    }
+    remote.auth.signOut().catch(function (error) {
+      console.error("Firebase logout failed", error);
+      updateAuthMessage("Nao foi possivel sair.", "error");
+    });
+  }
+
+  function updateAuthUi() {
+    if (!els.authForm || !els.authSession || !els.authUser) {
+      return;
+    }
+
+    const user = state.currentUser;
+    els.authForm.hidden = Boolean(user);
+    els.authSession.hidden = !user;
+    els.authUser.textContent = user ? (user.email || user.uid) : "";
+
+    if (user) {
+      updateAuthMessage("", "");
+    }
+  }
+
+  function updateAuthMessage(text, tone) {
+    if (!els.authMessage) {
+      return;
+    }
+    els.authMessage.textContent = text;
+    els.authMessage.classList.toggle("error", tone === "error");
+  }
+
+  function authErrorMessage(error) {
+    const code = error && error.code;
+    if (code === "auth/user-not-found" ||
+        code === "auth/wrong-password" ||
+        code === "auth/invalid-credential" ||
+        code === "auth/invalid-login-credentials") {
+      return "Email ou senha invalidos.";
+    }
+    if (code === "auth/too-many-requests") {
+      return "Muitas tentativas. Tente novamente depois.";
+    }
+    if (code === "auth/network-request-failed") {
+      return "Falha de rede ao entrar.";
+    }
+    return "Nao foi possivel entrar.";
   }
 
   function loadRecords() {

@@ -19,174 +19,6 @@
     period: "Periodo medido"
   };
 
-  const seedRecords = [
-    {
-      id: "monitoramento-3",
-      device: "24h ligado sem nome",
-      measuredTime: "24h",
-      measuredKwh: 0.208,
-      mode: "alwaysOn",
-      notes: "Linha sem aparelho na aba Monitoramento",
-      spreadsheetCost: 3.24,
-      source: "Monitoramento"
-    },
-    {
-      id: "monitoramento-5",
-      device: "Luz externa loja",
-      measuredTime: "6h:38",
-      measuredKwh: 0.016,
-      mode: "alwaysOn",
-      notes: "24 ligado",
-      spreadsheetCost: 1.4,
-      source: "Monitoramento"
-    },
-    {
-      id: "monitoramento-6",
-      device: "Camera loja",
-      measuredTime: "",
-      measuredKwh: 0,
-      mode: "alwaysOn",
-      notes: "",
-      spreadsheetCost: null,
-      source: "Monitoramento"
-    },
-    {
-      id: "monitoramento-7",
-      device: "Tv Samsung Smart ligada",
-      measuredTime: "1h40",
-      measuredKwh: 0.089,
-      mode: "hoursPerDay",
-      hoursPerDay: 6,
-      notes: "6 horas / dia",
-      spreadsheetCost: 7.9,
-      source: "Monitoramento"
-    },
-    {
-      id: "monitoramento-8",
-      device: "Monitor LG standby",
-      measuredTime: "",
-      measuredKwh: 0,
-      mode: "alwaysOn",
-      notes: "",
-      spreadsheetCost: null,
-      source: "Monitoramento"
-    },
-    {
-      id: "monitoramento-9",
-      device: "Monitor LG ligado",
-      measuredTime: "",
-      measuredKwh: null,
-      mode: "hoursPerDay",
-      notes: "",
-      spreadsheetCost: null,
-      source: "Monitoramento"
-    },
-    {
-      id: "monitoramento-10",
-      device: "Tv Samsung standby",
-      measuredTime: "5h56",
-      measuredKwh: 0.003,
-      mode: "alwaysOn",
-      notes: "24 horas",
-      spreadsheetCost: 0.3,
-      source: "Monitoramento"
-    },
-    {
-      id: "monitoramento-12",
-      device: "Ventilador WAP",
-      measuredTime: "30m 38s",
-      measuredKwh: 0.019,
-      mode: "hoursPerDay",
-      hoursPerDay: 8,
-      notes: "8 horas por dia",
-      spreadsheetCost: 7.6,
-      source: "Monitoramento"
-    },
-    {
-      id: "monitoramento-13",
-      device: "Airfryer",
-      measuredTime: "38 minutes",
-      measuredKwh: 0.547,
-      mode: "perUse",
-      usesPerMonth: 1,
-      notes: "por tempo",
-      spreadsheetCost: 0.45,
-      source: "Monitoramento"
-    },
-    {
-      id: "monitoramento-14",
-      device: "Ventilador Britania max",
-      measuredTime: "60 minutes",
-      measuredKwh: 0.133,
-      mode: "perHour",
-      hoursPerDay: 1,
-      notes: "por hora",
-      spreadsheetCost: 0.11,
-      source: "Monitoramento"
-    },
-    {
-      id: "monitoramento-15",
-      device: "Ventilador Britania med",
-      measuredTime: "60 minutes",
-      measuredKwh: 0.103,
-      mode: "perHour",
-      hoursPerDay: 1,
-      notes: "por hora",
-      spreadsheetCost: 0.08,
-      source: "Monitoramento"
-    },
-    {
-      id: "monitoramento-16",
-      device: "Ventilador Britania min",
-      measuredTime: "",
-      measuredKwh: null,
-      mode: "perHour",
-      notes: "por hora",
-      spreadsheetCost: null,
-      source: "Monitoramento"
-    },
-    {
-      id: "monitoramento-23",
-      device: "Raspberry Pi",
-      measuredTime: "",
-      measuredKwh: null,
-      mode: "alwaysOn",
-      notes: "",
-      spreadsheetCost: null,
-      source: "Monitoramento"
-    },
-    {
-      id: "monitoramento-24",
-      device: "Freezer",
-      measuredTime: "15 dias",
-      measuredKwh: 12.75,
-      mode: "period",
-      notes: "14:25:00 - 16/04",
-      spreadsheetCost: 10.58,
-      source: "Monitoramento"
-    },
-    {
-      id: "monitoramento-25",
-      device: "Groove Mikrotik",
-      measuredTime: "8 dias 15h 48",
-      measuredKwh: 0.415,
-      mode: "alwaysOn",
-      notes: "",
-      spreadsheetCost: null,
-      source: "Monitoramento"
-    },
-    {
-      id: "ligados-3",
-      device: "Mikrotik Hap ac lite com POE ativo",
-      measuredTime: "1D 14:04",
-      measuredKwh: 0.208,
-      mode: "alwaysOn",
-      notes: "Formula da planilha: (kWh * tarifa) * 24",
-      spreadsheetCost: 4.14336,
-      source: "24h-Ligados"
-    }
-  ];
-
   const state = {
     records: loadRecords(),
     settings: loadSettings(),
@@ -240,7 +72,6 @@
     authUser: document.getElementById("authUser"),
     logoutButton: document.getElementById("logoutButton"),
     authMessage: document.getElementById("authMessage"),
-    resetDataButton: document.getElementById("resetDataButton"),
     exportCsvButton: document.getElementById("exportCsvButton"),
     exportJsonButton: document.getElementById("exportJsonButton"),
     importButton: document.getElementById("importButton"),
@@ -333,6 +164,7 @@
       const snapshot = await state.remoteDoc.get();
       if (snapshot.exists) {
         applyRemoteData(snapshot.data());
+        await writeRemoteData();
       } else {
         await writeRemoteData();
       }
@@ -374,7 +206,7 @@
 
   function applyRemoteData(data) {
     if (Array.isArray(data.records)) {
-      state.records = data.records;
+      state.records = data.records.map(normalizeRecord);
     }
     state.settings = Object.assign({}, DEFAULT_SETTINGS, data.settings || {});
     cacheLocalData();
@@ -438,7 +270,6 @@
     });
 
     els.recordsTable.addEventListener("click", handleTableAction);
-    els.resetDataButton.addEventListener("click", resetSeedData);
     els.exportCsvButton.addEventListener("click", exportCsv);
     els.exportJsonButton.addEventListener("click", exportJson);
     els.importButton.addEventListener("click", function () {
@@ -566,7 +397,6 @@
       els.appWorkspace.hidden = locked;
     }
     [
-      els.resetDataButton,
       els.importButton,
       els.exportJsonButton,
       els.exportCsvButton
@@ -579,10 +409,10 @@
 
   function loadRecords() {
     const saved = readJson(STORAGE_KEY);
-    if (Array.isArray(saved) && saved.length) {
-      return saved;
+    if (Array.isArray(saved)) {
+      return saved.map(normalizeRecord);
     }
-    return clone(seedRecords);
+    return [];
   }
 
   function loadSettings() {
@@ -626,6 +456,7 @@
 
   function cacheLocalData() {
     try {
+      state.records = state.records.map(normalizeRecord);
       localStorage.setItem(STORAGE_KEY, JSON.stringify(state.records));
       localStorage.setItem(SETTINGS_KEY, JSON.stringify(state.settings));
     } catch (error) {
@@ -640,7 +471,7 @@
     return state.remoteDoc.set({
       schemaVersion: 1,
       settings: sanitizeForFirestore(state.settings),
-      records: sanitizeForFirestore(state.records),
+      records: sanitizeForFirestore(state.records.map(normalizeRecord)),
       updatedAt: firebase.firestore.FieldValue.serverTimestamp()
     }, { merge: true });
   }
@@ -663,8 +494,7 @@
       }
     } else {
       state.records.unshift(Object.assign({}, record, {
-        id: createId(),
-        source: "Sistema"
+        id: createId()
       }));
     }
 
@@ -684,6 +514,23 @@
       usesPerMonth: parseOptionalNumber(els.usesPerMonth.value),
       tariff: parseOptionalNumber(els.tariff.value),
       notes: els.notes.value.trim()
+    };
+  }
+
+  function normalizeRecord(record) {
+    const input = record || {};
+    const mode = MODES[input.mode] ? input.mode : "alwaysOn";
+    return {
+      id: input.id || createId(),
+      device: String(input.device || "").trim(),
+      measuredTime: String(input.measuredTime || "").trim(),
+      measuredKwh: parseOptionalNumber(input.measuredKwh),
+      mode: mode,
+      hoursPerDay: parseOptionalNumber(input.hoursPerDay),
+      daysPerMonth: parseOptionalNumber(input.daysPerMonth),
+      usesPerMonth: parseOptionalNumber(input.usesPerMonth),
+      tariff: parseOptionalNumber(input.tariff),
+      notes: String(input.notes || "").trim()
     };
   }
 
@@ -786,7 +633,7 @@
   function getFilteredRecords() {
     return state.records.filter(function (record) {
       const modeOk = state.filters.mode === "all" || record.mode === state.filters.mode;
-      const haystack = [record.device, record.notes, record.source].join(" ").toLowerCase();
+      const haystack = [record.device, record.notes].join(" ").toLowerCase();
       const searchOk = !state.filters.search || haystack.includes(state.filters.search);
       return modeOk && searchOk;
     });
@@ -857,7 +704,7 @@
     if (periodRows.length) {
       html.push(insightHtml(
         "Periodo medido",
-        "Linhas como freezer mantem o custo do periodo sem normalizar para 24h.",
+        "Registros de periodo medido mantem o custo do periodo sem normalizar para 24h.",
         ""
       ));
     }
@@ -887,7 +734,7 @@
     });
 
     if (!sorted.length) {
-      els.recordsTable.innerHTML = '<tr><td colspan="7" class="empty-state">Nenhum registro encontrado.</td></tr>';
+      els.recordsTable.innerHTML = '<tr><td colspan="6" class="empty-state">Nenhum registro encontrado.</td></tr>';
       return;
     }
 
@@ -898,17 +745,13 @@
         record.measuredTime ? escapeHtml(record.measuredTime) : "-",
         isFiniteNumber(record.measuredKwh) ? formatNumber(record.measuredKwh) + " kWh" : "-"
       ].join("<br>");
-      const spreadsheet = isFiniteNumber(record.spreadsheetCost)
-        ? formatCurrency(record.spreadsheetCost)
-        : "-";
-
       return [
         '<tr data-id="',
         escapeHtml(record.id),
         '"><td class="device-cell"><strong>',
         escapeHtml(record.device || "-"),
         '</strong><span>',
-        escapeHtml(record.notes || record.source || ""),
+        escapeHtml(record.notes || ""),
         '</span></td><td><span class="mode-badge">',
         escapeHtml(MODES[record.mode] || record.mode),
         "</span></td><td>",
@@ -919,9 +762,7 @@
         calc.isValid ? formatCurrency(calc.monthlyCost) : "-",
         '</strong><br><span class="muted">',
         calc.unitLabel,
-        '</span></td><td>',
-        spreadsheet,
-        '</td><td><div class="table-actions"><button class="small-button" data-action="edit" data-id="',
+        '</span></td><td><div class="table-actions"><button class="small-button" data-action="edit" data-id="',
         escapeHtml(record.id),
         '" type="button">Editar</button><button class="small-button" data-action="copy" data-id="',
         escapeHtml(record.id),
@@ -951,8 +792,7 @@
     if (button.dataset.action === "copy") {
       const copy = Object.assign({}, record, {
         id: createId(),
-        device: record.device + " copia",
-        source: "Sistema"
+        device: record.device + " copia"
       });
       state.records.unshift(copy);
       persist();
@@ -1205,10 +1045,6 @@
       .replace(/'/g, "&#039;");
   }
 
-  function clone(value) {
-    return JSON.parse(JSON.stringify(value));
-  }
-
   function sanitizeForFirestore(value) {
     return JSON.parse(JSON.stringify(value));
   }
@@ -1220,19 +1056,6 @@
     return "record-" + Date.now() + "-" + Math.random().toString(16).slice(2);
   }
 
-  function resetSeedData() {
-    if (!confirm("Restaurar os dados extraidos da planilha?")) {
-      return;
-    }
-    state.records = clone(seedRecords);
-    state.settings = Object.assign({}, DEFAULT_SETTINGS);
-    state.selectedId = null;
-    syncSettingsInputs();
-    persist();
-    resetForm();
-    render();
-  }
-
   function exportCsv() {
     const headers = [
       "aparelho",
@@ -1241,9 +1064,7 @@
       "kwh_medido",
       "kwh_mes",
       "custo_mes",
-      "custo_planilha",
-      "observacao",
-      "origem"
+      "observacao"
     ];
     const rows = state.records.map(function (record) {
       const calc = calculate(record);
@@ -1254,9 +1075,7 @@
         record.measuredKwh,
         calc.monthlyKwh,
         calc.monthlyCost,
-        record.spreadsheetCost,
-        record.notes,
-        record.source
+        record.notes
       ];
     });
     const csv = [headers].concat(rows)
@@ -1288,11 +1107,7 @@
         if (!Array.isArray(records)) {
           throw new Error("Formato invalido");
         }
-        state.records = records.map(function (record) {
-          return Object.assign({ id: createId() }, record, {
-            id: record.id || createId()
-          });
-        });
+        state.records = records.map(normalizeRecord);
         if (payload.settings) {
           state.settings = Object.assign({}, DEFAULT_SETTINGS, payload.settings);
         }

@@ -193,6 +193,7 @@
     remoteStore: null,
     remoteDoc: null,
     remoteUnsubscribe: null,
+    remoteReady: false,
     currentUser: null,
     selectedId: null,
     filters: {
@@ -229,6 +230,7 @@
     insightList: document.getElementById("insightList"),
     chart: document.getElementById("costChart"),
     storageStatus: document.getElementById("storageStatus"),
+    appWorkspace: document.getElementById("appWorkspace"),
     authBar: document.getElementById("authBar"),
     authForm: document.getElementById("authForm"),
     authEmail: document.getElementById("authEmail"),
@@ -248,6 +250,7 @@
   initialize();
 
   function initialize() {
+    setAccessLocked(true);
     syncSettingsInputs();
     bindEvents();
     resetForm();
@@ -258,7 +261,7 @@
   function bootDataStore() {
     const remote = createRemoteStore();
     if (!remote) {
-      updateStorageStatus("Modo local", "warning");
+      updateStorageStatus("Login indisponivel", "error");
       updateAuthMessage("Firebase indisponivel.", "error");
       return;
     }
@@ -284,7 +287,7 @@
       updateStorageStatus("Login pendente", "warning");
     }, function (error) {
       console.error("Firebase auth failed", error);
-      updateStorageStatus("Modo local", "error");
+      updateStorageStatus("Login indisponivel", "error");
       updateAuthMessage("Falha na autenticacao.", "error");
     });
   }
@@ -321,6 +324,8 @@
     }
 
     disconnectRemoteData();
+    state.remoteReady = false;
+    updateAuthUi();
     state.remoteDoc = remote.docRef;
     updateStorageStatus("Conectando", "warning");
 
@@ -340,10 +345,14 @@
         updateAuthMessage("", "");
       }, function (error) {
         console.error("Firestore listener failed", error);
+        state.remoteReady = false;
+        updateAuthUi();
         updateStorageStatus("Firebase erro", "error");
         updateAuthMessage(firestoreErrorMessage(error), "error");
       });
 
+      state.remoteReady = true;
+      updateAuthUi();
       updateStorageStatus("Firebase", "");
       updateAuthMessage("", "");
     } catch (error) {
@@ -360,6 +369,7 @@
       state.remoteUnsubscribe = null;
     }
     state.remoteDoc = null;
+    state.remoteReady = false;
   }
 
   function applyRemoteData(data) {
@@ -496,6 +506,7 @@
     els.authForm.hidden = Boolean(user);
     els.authSession.hidden = !user;
     els.authUser.textContent = user ? (user.email || user.uid) : "";
+    setAccessLocked(!user || !state.remoteReady);
 
     if (user) {
       updateAuthMessage("", "");
@@ -550,6 +561,22 @@
     return "Login feito, mas nao foi possivel conectar ao Firestore.";
   }
 
+  function setAccessLocked(locked) {
+    if (els.appWorkspace) {
+      els.appWorkspace.hidden = locked;
+    }
+    [
+      els.resetDataButton,
+      els.importButton,
+      els.exportJsonButton,
+      els.exportCsvButton
+    ].forEach(function (button) {
+      if (button) {
+        button.hidden = locked;
+      }
+    });
+  }
+
   function loadRecords() {
     const saved = readJson(STORAGE_KEY);
     if (Array.isArray(saved) && saved.length) {
@@ -574,11 +601,18 @@
   }
 
   function persist() {
-    cacheLocalData();
-    if (!state.remoteDoc) {
+    if (!state.currentUser) {
+      updateStorageStatus("Login pendente", "warning");
+      updateAuthMessage("Entre para usar o sistema.", "error");
+      return Promise.resolve();
+    }
+    if (!state.remoteDoc || !state.remoteReady) {
+      updateStorageStatus("Conectando", "warning");
+      updateAuthMessage("Aguarde a conexao com o Firestore.", "error");
       return Promise.resolve();
     }
 
+    cacheLocalData();
     updateStorageStatus("Salvando", "warning");
     return writeRemoteData()
       .then(function () {

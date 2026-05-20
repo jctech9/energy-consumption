@@ -16,10 +16,10 @@
         </div>
         <div class="top-actions">
           <span class="status-pill" id="storageStatus">Carregando</span>
-          <button class="button ghost" id="resetDataButton" type="button">Restaurar planilha</button>
-          <button class="button ghost" id="importButton" type="button">Importar</button>
-          <button class="button ghost" id="exportJsonButton" type="button">JSON</button>
-          <button class="button primary" id="exportCsvButton" type="button">CSV</button>
+          <button class="button ghost" id="resetDataButton" type="button" hidden>Restaurar planilha</button>
+          <button class="button ghost" id="importButton" type="button" hidden>Importar</button>
+          <button class="button ghost" id="exportJsonButton" type="button" hidden>JSON</button>
+          <button class="button primary" id="exportCsvButton" type="button" hidden>CSV</button>
           <input id="importFileInput" type="file" accept="application/json" hidden>
         </div>
       </header>
@@ -43,7 +43,7 @@
         <span class="auth-message" id="authMessage" role="status"></span>
       </section>
 
-      <main class="workspace">
+      <main class="workspace" id="appWorkspace" hidden>
         <aside class="panel form-panel" aria-label="Cadastro de aparelho">
           <form id="deviceForm" autocomplete="off">
             <div class="panel-header">

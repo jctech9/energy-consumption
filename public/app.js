@@ -72,6 +72,7 @@
     authUser: document.getElementById("authUser"),
     logoutButton: document.getElementById("logoutButton"),
     authMessage: document.getElementById("authMessage"),
+    clearDataButton: document.getElementById("clearDataButton"),
     exportCsvButton: document.getElementById("exportCsvButton"),
     exportJsonButton: document.getElementById("exportJsonButton")
   };
@@ -268,6 +269,7 @@
     });
 
     els.recordsTable.addEventListener("click", handleTableAction);
+    els.clearDataButton.addEventListener("click", clearDatabase);
     els.exportCsvButton.addEventListener("click", exportCsv);
     els.exportJsonButton.addEventListener("click", exportJson);
 
@@ -391,6 +393,7 @@
       els.appWorkspace.hidden = locked;
     }
     [
+      els.clearDataButton,
       els.exportJsonButton,
       els.exportCsvButton
     ].forEach(function (button) {
@@ -467,6 +470,42 @@
       records: sanitizeForFirestore(state.records.map(normalizeRecord)),
       updatedAt: firebase.firestore.FieldValue.serverTimestamp()
     }, { merge: true });
+  }
+
+  function clearDatabase() {
+    if (!state.currentUser || !state.remoteDoc || !state.remoteReady) {
+      updateStorageStatus("Conectando", "warning");
+      updateAuthMessage("Aguarde a conexao com o Firestore.", "error");
+      return;
+    }
+    if (!confirm("Apagar todos os registros do banco?")) {
+      return;
+    }
+
+    state.records = [];
+    state.settings = Object.assign({}, DEFAULT_SETTINGS);
+    state.selectedId = null;
+    syncSettingsInputs();
+    cacheLocalData();
+    resetForm();
+    render();
+
+    updateStorageStatus("Limpando", "warning");
+    state.remoteDoc.set({
+      schemaVersion: 1,
+      settings: sanitizeForFirestore(state.settings),
+      records: [],
+      updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+    }, { merge: true })
+      .then(function () {
+        updateStorageStatus("Firebase", "");
+        updateAuthMessage("Banco limpo.", "");
+      })
+      .catch(function (error) {
+        console.error("Firestore clear failed", error);
+        updateStorageStatus("Firebase erro", "error");
+        updateAuthMessage(firestoreErrorMessage(error), "error");
+      });
   }
 
   function handleSubmit(event) {

@@ -337,16 +337,20 @@
           applyRemoteData(nextSnapshot.data());
         }
         updateStorageStatus("Firebase", "");
+        updateAuthMessage("", "");
       }, function (error) {
         console.error("Firestore listener failed", error);
         updateStorageStatus("Firebase erro", "error");
+        updateAuthMessage(firestoreErrorMessage(error), "error");
       });
 
       updateStorageStatus("Firebase", "");
+      updateAuthMessage("", "");
     } catch (error) {
       console.error("Firebase connection failed", error);
       disconnectRemoteData();
       updateStorageStatus("Firebase erro", "error");
+      updateAuthMessage(firestoreErrorMessage(error), "error");
     }
   }
 
@@ -520,7 +524,30 @@
     if (code === "auth/network-request-failed") {
       return "Falha de rede ao entrar.";
     }
+    if (code === "auth/operation-not-allowed") {
+      return "Ative Email/Password em Authentication.";
+    }
+    if (code === "auth/invalid-email") {
+      return "Email invalido.";
+    }
+    if (code === "auth/user-disabled") {
+      return "Usuario desativado no Firebase.";
+    }
     return "Nao foi possivel entrar.";
+  }
+
+  function firestoreErrorMessage(error) {
+    const code = error && error.code;
+    if (code === "permission-denied") {
+      return "Sem permissao no Firestore. Confira as regras publicadas.";
+    }
+    if (code === "unavailable") {
+      return "Firestore indisponivel ou sem rede.";
+    }
+    if (code === "not-found") {
+      return "Firestore nao encontrado neste projeto.";
+    }
+    return "Login feito, mas nao foi possivel conectar ao Firestore.";
   }
 
   function loadRecords() {

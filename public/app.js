@@ -73,9 +73,7 @@
     logoutButton: document.getElementById("logoutButton"),
     authMessage: document.getElementById("authMessage"),
     exportCsvButton: document.getElementById("exportCsvButton"),
-    exportJsonButton: document.getElementById("exportJsonButton"),
-    importButton: document.getElementById("importButton"),
-    importFileInput: document.getElementById("importFileInput")
+    exportJsonButton: document.getElementById("exportJsonButton")
   };
 
   initialize();
@@ -272,10 +270,6 @@
     els.recordsTable.addEventListener("click", handleTableAction);
     els.exportCsvButton.addEventListener("click", exportCsv);
     els.exportJsonButton.addEventListener("click", exportJson);
-    els.importButton.addEventListener("click", function () {
-      els.importFileInput.click();
-    });
-    els.importFileInput.addEventListener("change", importJson);
 
     if ("ResizeObserver" in window) {
       const observer = new ResizeObserver(drawChart);
@@ -397,7 +391,6 @@
       els.appWorkspace.hidden = locked;
     }
     [
-      els.importButton,
       els.exportJsonButton,
       els.exportCsvButton
     ].forEach(function (button) {
@@ -1092,36 +1085,6 @@
       records: state.records
     };
     downloadFile("consumo-energia.json", JSON.stringify(payload, null, 2), "application/json");
-  }
-
-  function importJson(event) {
-    const file = event.target.files[0];
-    if (!file) {
-      return;
-    }
-    const reader = new FileReader();
-    reader.onload = function () {
-      try {
-        const payload = JSON.parse(String(reader.result || "{}"));
-        const records = Array.isArray(payload) ? payload : payload.records;
-        if (!Array.isArray(records)) {
-          throw new Error("Formato invalido");
-        }
-        state.records = records.map(normalizeRecord);
-        if (payload.settings) {
-          state.settings = Object.assign({}, DEFAULT_SETTINGS, payload.settings);
-        }
-        syncSettingsInputs();
-        persist();
-        resetForm();
-        render();
-      } catch (error) {
-        alert("Nao foi possivel importar o arquivo JSON.");
-      } finally {
-        event.target.value = "";
-      }
-    };
-    reader.readAsText(file);
   }
 
   function csvCell(value) {

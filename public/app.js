@@ -50,6 +50,7 @@
     tariff: document.getElementById("tariff"),
     notes: document.getElementById("notes"),
     calculationPreview: document.getElementById("calculationPreview"),
+    formMessage: document.getElementById("formMessage"),
     defaultTariff: document.getElementById("defaultTariff"),
     defaultDays: document.getElementById("defaultDays"),
     searchInput: document.getElementById("searchInput"),
@@ -241,8 +242,17 @@
     els.newRecordButton.addEventListener("click", resetForm);
     els.deleteButton.addEventListener("click", deleteSelected);
     els.mode.addEventListener("change", function () {
+      clearValidation();
       updateModeFields();
       updatePreview();
+    });
+
+    els.deviceName.addEventListener("input", function () {
+      clearFieldError(els.deviceName);
+      clearFormMessage();
+    });
+    els.deviceName.addEventListener("blur", function () {
+      els.deviceName.value = els.deviceName.value.trim();
     });
 
     [
@@ -254,7 +264,19 @@
       els.usesPerMonth,
       els.tariff
     ].forEach(function (input) {
-      input.addEventListener("input", updatePreview);
+      input.addEventListener("input", function () {
+        clearFieldError(input);
+        clearFormMessage();
+        updatePreview();
+      });
+      input.addEventListener("blur", function () {
+        normalizeFormInput(input);
+        updatePreview();
+      });
+    });
+
+    els.notes.addEventListener("blur", function () {
+      els.notes.value = els.notes.value.trim();
     });
 
     els.defaultTariff.addEventListener("change", updateSettings);
@@ -513,7 +535,9 @@
   function handleSubmit(event) {
     event.preventDefault();
     const record = recordFromForm();
-    if (!record.device || !isFiniteNumber(record.measuredKwh)) {
+    const validation = validateRecord(record);
+    if (!validation.valid) {
+      showValidation(validation);
       return;
     }
 
@@ -537,17 +561,115 @@
     resetForm();
   }
 
+  function validateRecord(record) {
+    clearValidation();
+
+    if (!record.device) {
+      return invalid(els.deviceName, "Informe o nome do aparelho.");
+    }
+    if (!isPositiveNumber(record.measuredKwh)) {
+      return invalid(els.measuredKwh, "Informe o kWh medido com valor maior que zero.");
+    }
+    if (!isBlank(els.measuredHours.value) && !isNumberInRange(record.measuredHours, 0, 23.9833333333)) {
+      return invalid(els.measuredHours, "Use horas entre 0 e 23h59m. Exemplo: 23h12m.");
+    }
+    if (!isBlank(els.measuredDays.value) && !isNonNegativeNumber(record.measuredDays)) {
+      return invalid(els.measuredDays, "Dias medidos nao pode ser negativo.");
+    }
+    if (modeNeedsMeasuredTime(record.mode) && getMeasuredHours(record) <= 0) {
+      return invalid(els.measuredHours, "Informe horas ou dias medidos para este modo.");
+    }
+    if (!els.hoursPerDay.disabled && !isNumberInRange(record.hoursPerDay, 0.01, 24)) {
+      return invalid(els.hoursPerDay, "Horas por dia deve ficar entre 0,01 e 24.");
+    }
+    if (!els.daysPerMonth.disabled && !isBlank(els.daysPerMonth.value) && !isNumberInRange(record.daysPerMonth, 1, 31)) {
+      return invalid(els.daysPerMonth, "Dias no mes deve ficar entre 1 e 31.");
+    }
+    if (!els.usesPerMonth.disabled && !isPositiveNumber(record.usesPerMonth)) {
+      return invalid(els.usesPerMonth, "Informe usos no mes maior que zero.");
+    }
+    if (!isBlank(els.tariff.value) && !isPositiveNumber(record.tariff)) {
+      return invalid(els.tariff, "Tarifa deve ser maior que zero.");
+    }
+
+    return { valid: true };
+  }
+
+  function invalid(input, message) {
+    return { valid: false, input: input, message: message };
+  }
+
+  function showValidation(validation) {
+    if (validation.input) {
+      validation.input.classList.add("invalid");
+      validation.input.setAttribute("aria-invalid", "true");
+      validation.input.focus();
+    }
+    if (els.formMessage) {
+      els.formMessage.textContent = validation.message;
+    }
+  }
+
+  function clearValidation() {
+    [
+      els.deviceName,
+      els.measuredHours,
+      els.measuredDays,
+      els.measuredKwh,
+      els.hoursPerDay,
+      els.daysPerMonth,
+      els.usesPerMonth,
+      els.tariff
+    ].forEach(clearFieldError);
+    clearFormMessage();
+  }
+
+  function clearFieldError(input) {
+    if (!input) {
+      return;
+    }
+    input.classList.remove("invalid");
+    input.removeAttribute("aria-invalid");
+  }
+
+  function clearFormMessage() {
+    if (els.formMessage) {
+      els.formMessage.textContent = "";
+    }
+  }
+
+  function normalizeFormInput(input) {
+    if (isBlank(input.value) || input.classList.contains("invalid")) {
+      return;
+    }
+
+    if (input === els.measuredHours) {
+      const hours = parseMeasuredHoursInput(input.value);
+      if (isNumberInRange(hours, 0, 23.9833333333)) {
+        input.value = formatDurationInput(hours);
+      }
+      return;
+    }
+
+    const number = parseOptionalFormNumberInput(input.value);
+    if (!isFiniteNumber(number)) {
+      return;
+    }
+
+    input.value = formatInputNumber(number);
+  }
+
   function recordFromForm() {
     return {
       device: els.deviceName.value.trim(),
-      measuredHours: parseOptionalNumber(els.measuredHours.value),
-      measuredDays: parseOptionalNumber(els.measuredDays.value),
-      measuredKwh: parseNumber(els.measuredKwh.value),
+      measuredHours: parseMeasuredHoursInput(els.measuredHours.value),
+      measuredDays: parseOptionalFormNumberInput(els.measuredDays.value),
+      measuredKwh: parseFormNumberInput(els.measuredKwh.value),
       mode: els.mode.value,
-      hoursPerDay: parseOptionalNumber(els.hoursPerDay.value),
-      daysPerMonth: parseOptionalNumber(els.daysPerMonth.value),
-      usesPerMonth: parseOptionalNumber(els.usesPerMonth.value),
-      tariff: parseOptionalNumber(els.tariff.value),
+      hoursPerDay: parseOptionalFormNumberInput(els.hoursPerDay.value),
+      daysPerMonth: parseOptionalFormNumberInput(els.daysPerMonth.value),
+      usesPerMonth: parseOptionalFormNumberInput(els.usesPerMonth.value),
+      tariff: parseOptionalFormNumberInput(els.tariff.value),
       notes: els.notes.value.trim()
     };
   }
@@ -595,7 +717,7 @@
     els.formTitle.textContent = "Editar aparelho";
     els.deleteButton.hidden = false;
     els.deviceName.value = record.device || "";
-    els.measuredHours.value = formatInputNumber(record.measuredHours);
+    els.measuredHours.value = formatDurationInput(record.measuredHours);
     els.measuredDays.value = formatInputNumber(record.measuredDays);
     els.measuredKwh.value = formatInputNumber(record.measuredKwh);
     els.mode.value = record.mode || "alwaysOn";
@@ -670,6 +792,7 @@
     if (!needsUses) {
       els.usesPerMonth.value = "";
     }
+    clearValidation();
   }
 
   function updatePreview() {
@@ -869,14 +992,17 @@
     context.setTransform(ratio, 0, 0, ratio, 0, 0);
     context.clearRect(0, 0, width, height);
 
-    const records = getFilteredRecords().map(enrichRecord)
+    const allRankedRecords = getFilteredRecords().map(enrichRecord)
       .filter(function (item) {
-        return item.calc.isValid && item.calc.monthlyCost > 0;
+        return item.calc.isValid && item.calc.monthlyKwh > 0;
       })
       .sort(function (a, b) {
-        return b.calc.monthlyCost - a.calc.monthlyCost;
-      })
-      .slice(0, 8);
+        return b.calc.monthlyKwh - a.calc.monthlyKwh;
+      });
+    const totalKwh = allRankedRecords.reduce(function (sum, item) {
+      return sum + item.calc.monthlyKwh;
+    }, 0);
+    const records = allRankedRecords.slice(0, 8);
 
     context.fillStyle = "#fbfcfb";
     context.fillRect(0, 0, width, height);
@@ -893,7 +1019,7 @@
     const plotWidth = width - padding.left - padding.right;
     const rowHeight = (height - padding.top - padding.bottom) / records.length;
     const max = Math.max.apply(null, records.map(function (item) {
-      return item.calc.monthlyCost;
+      return item.calc.monthlyKwh;
     }));
     const colors = ["#197c73", "#356f9f", "#bf7a16", "#5f7663", "#9a6b46", "#6f6f96", "#75813a", "#b84b4b"];
 
@@ -910,7 +1036,8 @@
     records.forEach(function (item, index) {
       const y = padding.top + index * rowHeight + rowHeight * 0.22;
       const barHeight = Math.max(16, rowHeight * 0.46);
-      const barWidth = Math.max(3, plotWidth * (item.calc.monthlyCost / max));
+      const barWidth = Math.max(3, plotWidth * (item.calc.monthlyKwh / max));
+      const share = totalKwh > 0 ? item.calc.monthlyKwh / totalKwh * 100 : 0;
 
       context.fillStyle = "#17211b";
       context.font = "700 12px system-ui";
@@ -924,13 +1051,13 @@
 
       context.fillStyle = "#17211b";
       context.textAlign = "left";
-      context.fillText(formatCurrency(item.calc.monthlyCost), padding.left + barWidth + 8, y + barHeight / 2);
+      context.fillText(formatPercent(share), padding.left + barWidth + 8, y + barHeight / 2);
     });
 
     context.fillStyle = "#5f6b63";
     context.font = "700 11px system-ui";
     context.textAlign = "right";
-    context.fillText("R$/mes", width - padding.right, height - 12);
+    context.fillText("% kWh/mes", width - padding.right, height - 12);
   }
 
   function calculate(record) {
@@ -1041,6 +1168,31 @@
     return isFiniteNumber(numeric) ? numeric : 0;
   }
 
+  function parseMeasuredHoursInput(value) {
+    if (isBlank(value)) {
+      return null;
+    }
+
+    const text = String(value).trim();
+    const hours = parseDurationToHours(text);
+    if (hours > 0) {
+      return hours;
+    }
+
+    const normalized = text
+      .toLowerCase()
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "")
+      .replace(",", ".")
+      .replace(/\s+/g, "");
+
+    if (/^0+(?:\.0+)?(?:(?:h|hora|horas|m|min|mins|minuto|minutos))?$/.test(normalized)) {
+      return 0;
+    }
+
+    return NaN;
+  }
+
   function getMeasuredHours(record) {
     const measuredHours = parseOptionalNumber(record.measuredHours) || 0;
     const measuredDays = parseOptionalNumber(record.measuredDays) || 0;
@@ -1056,7 +1208,7 @@
     const measuredHours = parseOptionalNumber(record.measuredHours);
     const measuredDays = parseOptionalNumber(record.measuredDays);
     if (measuredHours > 0) {
-      parts.push(formatNumber(measuredHours) + " h");
+      parts.push(formatDurationInput(measuredHours));
     }
     if (measuredDays > 0) {
       parts.push(formatNumber(measuredDays) + " dias");
@@ -1088,8 +1240,51 @@
     return isFiniteNumber(number) ? number : null;
   }
 
+  function parseFormNumberInput(value) {
+    if (isBlank(value)) {
+      return NaN;
+    }
+
+    const normalized = String(value)
+      .trim()
+      .replace(/\s+/g, "")
+      .replace(/[R$]/g, "")
+      .replace(",", ".");
+
+    return /^-?\d+(?:\.\d+)?$/.test(normalized) ? Number(normalized) : NaN;
+  }
+
+  function parseOptionalFormNumberInput(value) {
+    if (isBlank(value)) {
+      return null;
+    }
+
+    const number = parseFormNumberInput(value);
+    return isFiniteNumber(number) ? number : NaN;
+  }
+
   function isFiniteNumber(value) {
     return typeof value === "number" && Number.isFinite(value);
+  }
+
+  function isBlank(value) {
+    return value === null || value === undefined || String(value).trim() === "";
+  }
+
+  function isPositiveNumber(value) {
+    return isFiniteNumber(value) && value > 0;
+  }
+
+  function isNonNegativeNumber(value) {
+    return isFiniteNumber(value) && value >= 0;
+  }
+
+  function isNumberInRange(value, min, max) {
+    return isFiniteNumber(value) && value >= min && value <= max;
+  }
+
+  function modeNeedsMeasuredTime(mode) {
+    return mode === "alwaysOn" || mode === "hoursPerDay" || mode === "perHour";
   }
 
   function formatCurrency(value) {
@@ -1106,6 +1301,32 @@
       minimumFractionDigits: 2,
       maximumFractionDigits: 2
     }).format(safe);
+  }
+
+  function formatPercent(value) {
+    const safe = isFiniteNumber(value) ? value : 0;
+    return new Intl.NumberFormat("pt-BR", {
+      minimumFractionDigits: 1,
+      maximumFractionDigits: 1
+    }).format(safe) + "%";
+  }
+
+  function formatDurationInput(value) {
+    if (!isFiniteNumber(value)) {
+      return "";
+    }
+
+    let totalMinutes = Math.round(value * 60);
+    const hours = Math.floor(totalMinutes / 60);
+    const minutes = totalMinutes % 60;
+
+    if (hours > 0 && minutes > 0) {
+      return hours + "h" + minutes + "m";
+    }
+    if (hours > 0) {
+      return hours + "h";
+    }
+    return minutes + "m";
   }
 
   function formatInputNumber(value) {

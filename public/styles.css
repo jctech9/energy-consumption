@@ -273,6 +273,11 @@ h2 {
   outline: none;
 }
 
+.field input::placeholder,
+.compact-field input::placeholder {
+  color: #8d9790;
+}
+
 .field input:focus,
 .field select:focus,
 .compact-field input:focus,
@@ -281,9 +286,36 @@ h2 {
   box-shadow: 0 0 0 3px rgba(25, 124, 115, 0.14);
 }
 
+.field input.invalid,
+.field select.invalid {
+  border-color: var(--red);
+  box-shadow: 0 0 0 3px rgba(184, 75, 75, 0.12);
+}
+
 .field input:disabled {
   color: var(--muted-2);
   background: #f1f3f1;
+}
+
+.form-section {
+  margin-top: 14px;
+  padding: 12px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #fbfcfb;
+}
+
+.form-section h3 {
+  margin: 0 0 10px;
+  color: var(--teal-dark);
+  font-size: 0.78rem;
+  font-weight: 900;
+  letter-spacing: 0;
+  text-transform: uppercase;
+}
+
+.form-section .field-grid {
+  margin-top: 0;
 }
 
 .field-grid {
@@ -329,6 +361,14 @@ h2 {
   display: block;
   margin-top: 8px;
   font-size: 1.2rem;
+}
+
+.form-message {
+  min-height: 20px;
+  margin-top: 12px;
+  color: var(--red);
+  font-size: 0.86rem;
+  font-weight: 800;
 }
 
 .form-actions {

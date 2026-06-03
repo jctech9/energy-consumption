@@ -43,7 +43,7 @@
 
       <main class="workspace" id="appWorkspace" hidden>
         <aside class="panel form-panel" aria-label="Cadastro de aparelho">
-          <form id="deviceForm" autocomplete="off">
+          <form id="deviceForm" autocomplete="off" novalidate>
             <div class="panel-header">
               <h2 id="formTitle">Novo aparelho</h2>
               <button class="icon-button" id="newRecordButton" type="button" aria-label="Novo registro" title="Novo registro">+</button>
@@ -54,20 +54,23 @@
               <input id="deviceName" name="deviceName" required maxlength="80">
             </label>
 
-            <div class="field-grid measured-fields">
-              <label class="field">
-                <span>Horas medidas</span>
-                <input id="measuredHours" name="measuredHours" inputmode="decimal" placeholder="1,67">
-              </label>
-              <label class="field">
-                <span>Dias medidos</span>
-                <input id="measuredDays" name="measuredDays" inputmode="decimal" placeholder="15">
-              </label>
-              <label class="field measured-kwh-field">
-                <span>kWh medido</span>
-                <input id="measuredKwh" name="measuredKwh" inputmode="decimal" required placeholder="0,208">
-              </label>
-            </div>
+            <section class="form-section" aria-labelledby="measurementTitle">
+              <h3 id="measurementTitle">Medicao</h3>
+              <div class="field-grid measured-fields">
+                <label class="field">
+                  <span>Horas</span>
+                  <input id="measuredHours" name="measuredHours" inputmode="text" placeholder="23h12m">
+                </label>
+                <label class="field">
+                  <span>Dias</span>
+                  <input id="measuredDays" name="measuredDays" inputmode="decimal" placeholder="15">
+                </label>
+                <label class="field measured-kwh-field">
+                  <span>kWh medido</span>
+                  <input id="measuredKwh" name="measuredKwh" inputmode="decimal" required placeholder="0,208">
+                </label>
+              </div>
+            </section>
 
             <label class="field full">
               <span>Modo de calculo</span>
@@ -80,24 +83,27 @@
               </select>
             </label>
 
-            <div class="field-grid">
-              <label class="field">
-                <span>Horas por dia</span>
-                <input id="hoursPerDay" name="hoursPerDay" inputmode="decimal" placeholder="6">
-              </label>
-              <label class="field">
-                <span>Dias no mes</span>
-                <input id="daysPerMonth" name="daysPerMonth" inputmode="decimal" placeholder="24">
-              </label>
-              <label class="field">
-                <span>Usos no mes</span>
-                <input id="usesPerMonth" name="usesPerMonth" inputmode="decimal" placeholder="1">
-              </label>
-              <label class="field">
-                <span>Tarifa R$/kWh</span>
-                <input id="tariff" name="tariff" inputmode="decimal" placeholder="0,83">
-              </label>
-            </div>
+            <section class="form-section" aria-labelledby="usageTitle">
+              <h3 id="usageTitle">Uso mensal</h3>
+              <div class="field-grid">
+                <label class="field">
+                  <span>Horas por dia</span>
+                  <input id="hoursPerDay" name="hoursPerDay" inputmode="decimal" placeholder="6">
+                </label>
+                <label class="field">
+                  <span>Dias no mes</span>
+                  <input id="daysPerMonth" name="daysPerMonth" inputmode="decimal" placeholder="24">
+                </label>
+                <label class="field">
+                  <span>Usos no mes</span>
+                  <input id="usesPerMonth" name="usesPerMonth" inputmode="decimal" placeholder="1">
+                </label>
+                <label class="field">
+                  <span>Tarifa R$/kWh</span>
+                  <input id="tariff" name="tariff" inputmode="decimal" placeholder="0,83">
+                </label>
+              </div>
+            </section>
 
             <label class="field full">
               <span>Observacao</span>
@@ -114,6 +120,8 @@
                 <strong>0,00</strong>
               </div>
             </div>
+
+            <div class="form-message" id="formMessage" role="alert" aria-live="polite"></div>
 
             <div class="form-actions">
               <button class="button primary" type="submit">Salvar</button>
@@ -174,7 +182,7 @@
                 <h2>Ranking mensal</h2>
                 <span id="recordCount" class="count-pill">0 itens</span>
               </div>
-              <canvas id="costChart" width="900" height="320" aria-label="Grafico de custo mensal"></canvas>
+              <canvas id="costChart" width="900" height="320" aria-label="Grafico de participacao em kWh mensal"></canvas>
             </div>
 
             <div class="panel insight-panel">

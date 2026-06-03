@@ -1015,7 +1015,13 @@
       return;
     }
 
-    const padding = { top: 20, right: 26, bottom: 38, left: 126 };
+    context.font = "700 12px system-ui";
+    const labelPadding = 12;
+    const valueLabelWidth = Math.max.apply(null, records.map(function (item) {
+      const share = totalKwh > 0 ? item.calc.monthlyKwh / totalKwh * 100 : 0;
+      return context.measureText(formatPercent(share)).width;
+    }));
+    const padding = { top: 20, right: Math.ceil(valueLabelWidth + labelPadding + 24), bottom: 38, left: 126 };
     const plotWidth = width - padding.left - padding.right;
     const rowHeight = (height - padding.top - padding.bottom) / records.length;
     const max = Math.max.apply(null, records.map(function (item) {
@@ -1051,7 +1057,7 @@
 
       context.fillStyle = "#17211b";
       context.textAlign = "left";
-      context.fillText(formatPercent(share), padding.left + barWidth + 8, y + barHeight / 2);
+      context.fillText(formatPercent(share), padding.left + barWidth + labelPadding, y + barHeight / 2);
     });
 
     context.fillStyle = "#5f6b63";

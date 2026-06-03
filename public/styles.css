@@ -293,6 +293,10 @@ h2 {
   margin-top: 12px;
 }
 
+.measured-fields .field:first-child {
+  grid-column: 1 / -1;
+}
+
 .field.full {
   margin-top: 12px;
 }

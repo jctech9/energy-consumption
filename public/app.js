@@ -241,6 +241,15 @@
     els.form.addEventListener("submit", handleSubmit);
     els.newRecordButton.addEventListener("click", resetForm);
     els.deleteButton.addEventListener("click", deleteSelected);
+    if (els.clearDataButton) {
+      els.clearDataButton.addEventListener("click", clearDatabase);
+    }
+    if (els.exportJsonButton) {
+      els.exportJsonButton.addEventListener("click", exportJson);
+    }
+    if (els.exportCsvButton) {
+      els.exportCsvButton.addEventListener("click", exportCsv);
+    }
     els.mode.addEventListener("change", function () {
       clearValidation();
       updateModeFields();
@@ -293,9 +302,6 @@
     });
 
     els.recordsTable.addEventListener("click", handleTableAction);
-    els.clearDataButton.addEventListener("click", clearDatabase);
-    els.exportCsvButton.addEventListener("click", exportCsv);
-    els.exportJsonButton.addEventListener("click", exportJson);
 
     if ("ResizeObserver" in window) {
       const observer = new ResizeObserver(drawChart);

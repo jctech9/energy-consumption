@@ -293,7 +293,7 @@ h2 {
   margin-top: 12px;
 }
 
-.measured-fields .field:first-child {
+.measured-fields .measured-kwh-field {
   grid-column: 1 / -1;
 }
 

@@ -40,7 +40,8 @@
     newRecordButton: document.getElementById("newRecordButton"),
     deleteButton: document.getElementById("deleteButton"),
     deviceName: document.getElementById("deviceName"),
-    measuredTime: document.getElementById("measuredTime"),
+    measuredHours: document.getElementById("measuredHours"),
+    measuredDays: document.getElementById("measuredDays"),
     measuredKwh: document.getElementById("measuredKwh"),
     mode: document.getElementById("mode"),
     hoursPerDay: document.getElementById("hoursPerDay"),
@@ -245,7 +246,8 @@
     });
 
     [
-      els.measuredTime,
+      els.measuredHours,
+      els.measuredDays,
       els.measuredKwh,
       els.hoursPerDay,
       els.daysPerMonth,
@@ -538,7 +540,8 @@
   function recordFromForm() {
     return {
       device: els.deviceName.value.trim(),
-      measuredTime: els.measuredTime.value.trim(),
+      measuredHours: parseOptionalNumber(els.measuredHours.value),
+      measuredDays: parseOptionalNumber(els.measuredDays.value),
       measuredKwh: parseNumber(els.measuredKwh.value),
       mode: els.mode.value,
       hoursPerDay: parseOptionalNumber(els.hoursPerDay.value),
@@ -552,10 +555,13 @@
   function normalizeRecord(record) {
     const input = record || {};
     const mode = MODES[input.mode] ? input.mode : "alwaysOn";
+    const legacyTimeParts = splitMeasuredTime(input);
     return {
       id: input.id || createId(),
       device: String(input.device || "").trim(),
       measuredTime: String(input.measuredTime || "").trim(),
+      measuredHours: parseOptionalNumber(input.measuredHours) || legacyTimeParts.hours,
+      measuredDays: parseOptionalNumber(input.measuredDays) || legacyTimeParts.days,
       measuredKwh: parseOptionalNumber(input.measuredKwh),
       mode: mode,
       hoursPerDay: parseOptionalNumber(input.hoursPerDay),
@@ -566,12 +572,31 @@
     };
   }
 
+  function splitMeasuredTime(input) {
+    if (parseOptionalNumber(input.measuredHours) || parseOptionalNumber(input.measuredDays)) {
+      return { hours: null, days: null };
+    }
+
+    const totalHours = parseDurationToHours(input.measuredTime);
+    if (!totalHours) {
+      return { hours: null, days: null };
+    }
+
+    const days = Math.floor(totalHours / 24);
+    const hours = totalHours - days * 24;
+    return {
+      hours: hours > 0 ? hours : null,
+      days: days > 0 ? days : null
+    };
+  }
+
   function fillForm(record) {
     state.selectedId = record.id;
     els.formTitle.textContent = "Editar aparelho";
     els.deleteButton.hidden = false;
     els.deviceName.value = record.device || "";
-    els.measuredTime.value = record.measuredTime || "";
+    els.measuredHours.value = formatInputNumber(record.measuredHours);
+    els.measuredDays.value = formatInputNumber(record.measuredDays);
     els.measuredKwh.value = formatInputNumber(record.measuredKwh);
     els.mode.value = record.mode || "alwaysOn";
     els.hoursPerDay.value = formatInputNumber(record.hoursPerDay);
@@ -774,7 +799,7 @@
       const record = item.record;
       const calc = item.calc;
       const measured = [
-        record.measuredTime ? escapeHtml(record.measuredTime) : "-",
+        formatMeasuredTime(record),
         isFiniteNumber(record.measuredKwh) ? formatNumber(record.measuredKwh) + " kWh" : "-"
       ].join("<br>");
       return [
@@ -910,7 +935,7 @@
 
   function calculate(record) {
     const measuredKwh = parseNumber(record.measuredKwh);
-    const measuredHours = parseDurationToHours(record.measuredTime);
+    const measuredHours = getMeasuredHours(record);
     const tariff = parseOptionalNumber(record.tariff) || state.settings.tariff;
     const days = parseOptionalNumber(record.daysPerMonth) || state.settings.billingDays;
     const hoursPerDay = parseOptionalNumber(record.hoursPerDay);
@@ -1016,6 +1041,32 @@
     return isFiniteNumber(numeric) ? numeric : 0;
   }
 
+  function getMeasuredHours(record) {
+    const measuredHours = parseOptionalNumber(record.measuredHours) || 0;
+    const measuredDays = parseOptionalNumber(record.measuredDays) || 0;
+    const total = measuredHours + measuredDays * 24;
+    if (total > 0) {
+      return total;
+    }
+    return parseDurationToHours(record.measuredTime);
+  }
+
+  function formatMeasuredTime(record) {
+    const parts = [];
+    const measuredHours = parseOptionalNumber(record.measuredHours);
+    const measuredDays = parseOptionalNumber(record.measuredDays);
+    if (measuredHours > 0) {
+      parts.push(formatNumber(measuredHours) + " h");
+    }
+    if (measuredDays > 0) {
+      parts.push(formatNumber(measuredDays) + " dias");
+    }
+    if (parts.length) {
+      return escapeHtml(parts.join(" + "));
+    }
+    return record.measuredTime ? escapeHtml(record.measuredTime) : "-";
+  }
+
   function parseNumber(value) {
     if (typeof value === "number") {
       return Number.isFinite(value) ? value : NaN;
@@ -1092,7 +1143,8 @@
     const headers = [
       "aparelho",
       "modo",
-      "tempo_medido",
+      "horas_medidas",
+      "dias_medidos",
       "kwh_medido",
       "kwh_mes",
       "custo_mes",
@@ -1103,7 +1155,8 @@
       return [
         record.device,
         MODES[record.mode] || record.mode,
-        record.measuredTime,
+        record.measuredHours,
+        record.measuredDays,
         record.measuredKwh,
         calc.monthlyKwh,
         calc.monthlyCost,
